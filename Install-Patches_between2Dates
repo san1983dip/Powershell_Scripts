@@ -1,0 +1,49 @@
+<# This script will help you to find the installed patches on a windows servers between a date range. From today to your specified date.
+You need to run the code separatly for Ashburn and Dallas servers 
+#>
+
+
+# Path to the server list
+$ServerList = "*****\serverlist.txt" #Specify the location where you have stored the serverlist
+
+
+# Output file path
+$OutputFile = "****\LatestPatches.csv" #Specify the location where you want to create the output file.
+
+# Define the date filter
+$FilterDate = Get-Date -Year 2024 -Month 11 -Day 10 # Change the "Year / Month / Day" filed as per your requirment
+
+# Initialize an array to store the results
+$results = @()
+
+# Read each server from the file and process
+Get-Content $serverList | ForEach-Object {
+    $server = $_
+    Write-Host "Processing server: $server" -ForegroundColor Yellow
+    
+    try {
+        # Run the command on the server
+        $patches = Get-CimInstance -ComputerName $server -ClassName Win32_QuickFixEngineering |
+                   Select-Object HotFixID, InstalledOn |
+                   Where-Object { $_.InstalledOn -gt $FilterDate }
+        
+        # Add the server name to each result
+        $patches | ForEach-Object {
+            $_ | Add-Member -MemberType NoteProperty -Name ServerName -Value $server -Force
+        }
+        
+        # Collect the results
+        $results += $patches
+    }
+    catch {
+        Write-Host "Failed to connect to $server $_" -ForegroundColor Red
+    }
+}
+
+# Display the results on the screen
+$results | Format-Table -AutoSize
+
+# Export the results to a CSV file
+$results | Export-Csv -Path $outputFile -NoTypeInformation
+
+Write-Host "Results saved to $outputFile" -ForegroundColor Green
