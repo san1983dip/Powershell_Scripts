@@ -1,0 +1,33 @@
+# Define the input and output files
+$ServerList = "C:\Path\To\servers.txt" # Path to the text file with server names
+$OutputFile = "C:\Path\To\RebootReport.csv" # Path to save the report
+
+# Initialize an array to store results
+$Results = @()
+
+# Read server names from the file
+foreach ($Server in Get-Content $ServerList) {
+    Write-Host "Checking server: $Server" -ForegroundColor Green
+
+    try {
+        # Get the last boot time
+        $RebootTime = (Get-CimInstance -ClassName Win32_OperatingSystem -ComputerName $Server).LastBootUpTime
+        # Add the result to the array
+        $Results += [PSCustomObject]@{
+            ServerName = $Server
+            LastReboot = $RebootTime
+        }
+    } catch {
+        # Handle errors (e.g., unreachable servers)
+        Write-Host "Error connecting to $Server: $_" -ForegroundColor Red
+        $Results += [PSCustomObject]@{
+            ServerName = $Server
+            LastReboot = "Error: $_"
+        }
+    }
+}
+
+# Export the results to a CSV file
+$Results | Export-Csv -Path $OutputFile -NoTypeInformation -Force
+
+Write-Host "Reboot report saved to $OutputFile" -ForegroundColor Cyan
